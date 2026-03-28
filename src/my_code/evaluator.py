@@ -52,7 +52,7 @@ class Evaluator:  # Response Evaluator
             "details":          details,
         }
 
-    # 버그 수정: EvaluationItem → structure.EvaluationItem
+
     def _score_answer(self, item: structure.EvaluationItem, predicted: str) -> float:
         expected = self._normalize(item.expected_answer)
         pred     = self._normalize(predicted)

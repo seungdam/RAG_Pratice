@@ -6,9 +6,14 @@ from __future__ import annotations
 import os
 from typing import Optional, Sequence
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+try:
+    # Preferred in recent LangChain versions.
+    from langchain_huggingface import HuggingFaceEmbeddings
+except ImportError:
+    # Backward-compatible fallback for older environments.
+    from langchain_community.embeddings import HuggingFaceEmbeddings
 
 if __package__:
     from . import structure
@@ -34,7 +39,7 @@ class EmbeddingService:  # Text to Embedding Vector
         return self.model
 
 
-class VectorIndexRepository:  # Create Embedding Index
+class VectorIndexRepository:
     def __init__(self, embedding_service: EmbeddingService):
         self.embedding_service = embedding_service
         self.vector_store: Optional[FAISS] = None

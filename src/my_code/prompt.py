@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# rag.py의 RAGPipeline._build_prompt()에서 분리 + 고도화
 # 기존: 문제 유형 관계없이 프롬프트가 하나뿐이었음
 # 개선: QuestionType별로 전용 프롬프트 사용
 

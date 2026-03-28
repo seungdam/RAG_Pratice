@@ -115,11 +115,8 @@ class MetadataRepository:  # Postgres Manager
 def try_build_metadata_repo(dsn: str | None) -> Optional[MetadataRepository]:
     """
     DSN이 없거나 DB 연결에 실패해도 None을 반환하는 안전한 팩토리.
-    None 반환 시 HybridRetriever가 자동으로 Dense 전용 모드로 동작합니다.
-
-    기존 코드에서는 MetadataRepository(dsn)을 직접 호출했는데,
-    DSN이 없거나 DB가 꺼져 있으면 즉시 에러가 났습니다.
-    이 함수를 쓰면 DB 없어도 main.py가 그냥 실행됩니다.
+    None 반환 시 HybridRetriever가 자동으로 Dense 전용 모드로 동작.
+    이 함수를 쓰면 DB 없어도 gui.py가 그냥 실행.
     """
     if not dsn:
         print("DB DSN 없음 → Dense 전용 모드로 실행합니다.")

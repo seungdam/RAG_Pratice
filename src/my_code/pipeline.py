@@ -28,8 +28,6 @@ class SupportsInvoke(Protocol):
 
 class RAGPipeline:  # Prompting Pipeline
     """
-    고도화된 RAG 파이프라인.
-
     기존 코드에서 변경된 부분:
     1. answer()에 question_type 파라미터 추가
        → prompt.py의 build_prompt()를 통해 유형별 프롬프트 자동 선택
@@ -106,7 +104,7 @@ class RAGPipeline:  # Prompting Pipeline
         retrieved: list[structure.RetrievalResult],
     ) -> list[structure.RetrievalResult]:
         """
-        Reranker 유무에 따라 자동으로 선택 방식을 결정합니다.
+        Reranker 유무에 따라 자동으로 선택 방식을 결정
         - Reranker 있음 → CrossEncoder로 재정렬 후 top_k 반환
         - Reranker 없음 → 기존 방식: retrieved[:max_context_chunks]
         """
