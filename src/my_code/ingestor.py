@@ -17,8 +17,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 class ParserType(Enum):
     UNSTRUCTURED = "unstructured"
     PYMUPDF = "pymupdf"
-    LLAMA_PARSE = "llama_parse"
-
 
 class PDFIngestor:
     def __init__(self, file_path: str, parser_type: ParserType = ParserType.PYMUPDF):
@@ -31,17 +29,8 @@ class PDFIngestor:
         """파서 팩토리 함수."""
         if parser_type == ParserType.PYMUPDF:
             return PyMuPDFLoader(file_path=file_path)
-            
         elif parser_type == ParserType.UNSTRUCTURED:
-            return UnstructuredPDFLoader(file_path=file_path)
-            
-        elif parser_type == ParserType.LLAMA_PARSE:
-            # LlamaParse 구현 예시 (필요시 활성화)
-            from llama_parse import LlamaParse
-            return LlamaParse(result_type="markdown",  # "markdown"과 "text" 사용 가능
-                            num_workers=8,  # worker 수 (기본값: 4)
-                            verbose=True,
-                            language="ko",)
+            return UnstructuredPDFLoader(file_path=file_path, mode="elements",startegy="hi_res")
         else:
             raise ValueError(f"지원하지 않는 파서 타입입니다: {parser_type}")
 
@@ -59,6 +48,13 @@ class ChunkService:
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
         )
+    @staticmethod
+    def _extract_page(metadata: dict[str, Any]) -> int:
+        raw = metadata.get("page_number", metadata.get("page",-1))
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return -1
 
     def split(self, docs: Sequence[Document]) -> list[Document]:
         chunks = self.splitter.split_documents(list(docs))
@@ -67,7 +63,7 @@ class ChunkService:
         for idx, chunk in enumerate(chunks):
             chunk.page_content = self._normalize_text(chunk.page_content)
             
-            # consider of meta data diff between parsers
+            # consider of metadata diff between parsers
             source   = str(chunk.metadata.get("source", "unknown"))
             page     = self._safe_int(chunk.metadata.get("page"), default=-1)
             section  = str(chunk.metadata.get("section") or chunk.metadata.get("category") or "unknown")
