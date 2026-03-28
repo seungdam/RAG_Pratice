@@ -440,13 +440,19 @@ def _render_retrieval_results(results: list[structure.RetrievalResult]) -> str:
 def _render_citation_rows(citations: Iterable[dict[str, Any]]) -> str:
     rows: list[str] = []
     for idx, c in enumerate(citations, start=1):
+        source = str(c.get("source", "unknown")).replace("\\", "/").split("/")[-1]
+        excerpt = str(c.get("excerpt") or c.get("text", ""))
+        if len(excerpt) > 280:
+            excerpt = excerpt[:277] + "..."
         rows.append(
             "<tr>"
             f"<td style='padding:6px'>{idx}</td>"
+            f"<td style='padding:6px'>{_esc(source)}</td>"
             f"<td style='padding:6px'>{_esc(str(c.get('page', '?')))}</td>"
             f"<td style='padding:6px'>{_esc(str(c.get('score', '?')))}</td>"
             f"<td style='padding:6px'>{_esc(str(c.get('retriever', '?')))}</td>"
             f"<td style='padding:6px;font-family:monospace'>{_esc(str(c.get('chunk_id', ''))[-30:])}</td>"
+            f"<td style='padding:6px;white-space:pre-wrap;max-width:460px'>{_esc(excerpt)}</td>"
             "</tr>"
         )
 
@@ -457,10 +463,12 @@ def _render_citation_rows(citations: Iterable[dict[str, Any]]) -> str:
         "<table style='width:100%;border-collapse:collapse;border:1px solid #ddd;font-size:12px'>"
         "<thead><tr style='background:#f7f7f7'>"
         "<th style='padding:6px;text-align:left'>#</th>"
+        "<th style='padding:6px;text-align:left'>Source</th>"
         "<th style='padding:6px;text-align:left'>Page</th>"
         "<th style='padding:6px;text-align:left'>Score</th>"
         "<th style='padding:6px;text-align:left'>Retriever</th>"
         "<th style='padding:6px;text-align:left'>Chunk ID</th>"
+        "<th style='padding:6px;text-align:left'>Text</th>"
         "</tr></thead>"
         f"<tbody>{''.join(rows)}</tbody>"
         "</table>"

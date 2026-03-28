@@ -42,9 +42,9 @@ DB_DSN          = None          # PostgreSQL 없으면 None
 FAISS_CACHE_PATH = str(BASE_DIR / "faiss_index")  # 재실행 시 임베딩 재생성 방지
 
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-LLM_MODEL       = "gemma3:270n"
-CHUNK_SIZE      = 1000
-CHUNK_OVERLAP   = 100
+LLM_MODEL       = "gemma3:270m"
+CHUNK_SIZE      = 700
+CHUNK_OVERLAP   = 50
 
 
 # =============================================

@@ -85,6 +85,8 @@ class RAGPipeline:  # Prompting Pipeline
                 "page":      int(item.document.metadata.get("page", -1)),
                 "score":     round(item.score, 4),
                 "retriever": item.retriever,  # 신규: 검색 방식 추적
+                "text":      str(item.document.page_content),
+                "excerpt":   self._excerpt(item.document.page_content),
             }
             for item in selected
         ]
@@ -141,3 +143,10 @@ class RAGPipeline:  # Prompting Pipeline
         if hasattr(raw, "content"):
             return str(raw.content).strip()
         return str(raw).strip()
+
+    @staticmethod
+    def _excerpt(text: str, max_chars: int = 280) -> str:
+        compact = " ".join(str(text).split())
+        if len(compact) <= max_chars:
+            return compact
+        return compact[: max_chars - 3] + "..."
