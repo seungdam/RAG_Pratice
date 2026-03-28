@@ -4,7 +4,6 @@ from enum import Enum
 
 from langchain_core.documents import Document
 
-@dataclass
 class QuestionType(str, Enum):
     """시험 문제 유형 열거형"""
     TRUE_FALSE      = "True/False"
@@ -27,4 +26,4 @@ class EvaluationItem:
     question: str
     expected_answer: str
     required_keywords: list[str] = field(default_factory=list)
-    question_type: str = QuestionType.SHORT_ANSWER
+    question_type: QuestionType = QuestionType.SHORT_ANSWER
