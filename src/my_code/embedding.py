@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-# rag.py에서 EmbeddingService, VectorIndexRepository, Embedder를 분리한 파일
-# 기존 로직은 100% 유지, Embedder에만 get_or_build 메서드 추가
-
 import os
 from typing import Optional, Sequence
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+
 try:
     # Preferred in recent LangChain versions.
     from langchain_huggingface import HuggingFaceEmbeddings
@@ -21,14 +19,13 @@ else:
     import structure
 
 
-class EmbeddingService:  # Text to Embedding Vector
+class EmbeddingService:
     def __init__(
         self,
         model_name: str,
         device: str = "cpu",
         normalize_embeddings: bool = True,
     ):
-        """HuggingFace 기반 모델 호출"""
         self.model = HuggingFaceEmbeddings(
             model_name=model_name,
             model_kwargs={"device": device},
@@ -87,28 +84,32 @@ class Embedder:
             raise RuntimeError("Failed to build FAISS vector store.")
         return self.vector_repo.vector_store
 
-    # 캐시 활용 빌더
     def get_or_build(
         self,
         docs: Sequence[Document],
         save_path: str | None = None,
     ) -> VectorIndexRepository:
-        """
-        FAISS 인덱스 캐시가 있으면 로드, 없으면 새로 빌드 후 저장.
-        Args:
-            docs:      ChunkService.split()이 반환한 청크 리스트
-            save_path: FAISS 인덱스 저장/로드 경로 (None이면 저장 안 함)
-        Returns:
-            VectorIndexRepository (search() 바로 사용 가능한 상태)
-        """
-        if save_path and os.path.exists(save_path):
-            print(f"FAISS 캐시 로드: {save_path}")
-            self.vector_repo.load_local(save_path)
-        else:
-            print("FAISS 인덱스 신규 빌드 중...")
-            self.vector_repo.build(docs)
-            if save_path:
-                self.vector_repo.save_local(save_path)
-                print(f"FAISS 인덱스 저장: {save_path}")
+        if save_path and self._is_valid_faiss_cache(save_path):
+            try:
+                print(f"FAISS cache load: {save_path}")
+                self.vector_repo.load_local(save_path)
+                return self.vector_repo
+            except Exception as exc:
+                # Corrupted/incompatible cache should not block pipeline startup.
+                print(f"FAISS cache load failed ({exc}) -> rebuilding")
+
+        print("Building FAISS index...")
+        self.vector_repo.build(docs)
+        if save_path:
+            self.vector_repo.save_local(save_path)
+            print(f"FAISS index saved: {save_path}")
 
         return self.vector_repo
+
+    @staticmethod
+    def _is_valid_faiss_cache(path: str) -> bool:
+        if not path or not os.path.isdir(path):
+            return False
+        index_faiss = os.path.join(path, "index.faiss")
+        index_pkl = os.path.join(path, "index.pkl")
+        return os.path.isfile(index_faiss) and os.path.isfile(index_pkl)
