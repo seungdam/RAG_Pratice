@@ -3,11 +3,11 @@ import os
 from pathlib import Path
 
 """
-main.py — RAG 시험 에이전트 진입점
+test_logic.py — RAG 시험 에이전트 진입점
 실행:
     PYTHONPATH=src python -m my_code.main
 또는:
-    cd src/my_code && python main.py
+    cd src/my_code && python test_logic.py
 
 사전 준비:
     pip install langchain langchain-community langchain-ollama
@@ -38,17 +38,17 @@ else:
 # =============================================
 BASE_DIR = Path(__file__).resolve().parent.parent  # /.../RAG_Pratice/src
 PDF_PATH = os.getenv("PDF_PATH", str(BASE_DIR / "data" / "7_TransferLearning.pdf"))
-DB_DSN          = None          # PostgreSQL 없으면 None → Dense 전용 모드
+DB_DSN          = None          # PostgreSQL 없으면 None
 FAISS_CACHE_PATH = str(BASE_DIR / "faiss_index")  # 재실행 시 임베딩 재생성 방지
 
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-LLM_MODEL       = "gemma3:4b"
+LLM_MODEL       = "gemma3:270n"
 CHUNK_SIZE      = 1000
 CHUNK_OVERLAP   = 100
 
 
 # =============================================
-# 시험 문제 정의
+# 시험 문제
 # =============================================
 EXAM_QUESTIONS: list[dict] = [
     {
@@ -102,7 +102,7 @@ EXAM_QUESTIONS: list[dict] = [
 
 
 # =============================================
-# 채점 로직 (샘플 exam_rag.py 방식 유지 + 부분점수)
+# 채점 로직 (exam_rag.py)
 # =============================================
 def grade(q_info: dict, ai_answer: str) -> dict:
     answer   = ai_answer.strip().lower()
@@ -124,98 +124,3 @@ def grade(q_info: dict, ai_answer: str) -> dict:
                 feedback.append(f"  X '{kw}' 미확인")
 
     return {"earned": earned, "max": q_info["points"], "feedback": feedback}
-
-
-# =============================================
-# 결과 출력
-# =============================================
-def print_result(q_info: dict, response: dict, grading: dict) -> None:
-    LINE = "=" * 65
-    print(f"\n{LINE}")
-    print(f"  Q{q_info['id']}. [{q_info['points']}pts] ({q_info['type']})")
-    print(LINE)
-
-    print(f"\n[문제]\n  {q_info['question']}\n")
-
-    print("📄 [참조한 강의자료]")
-    for i, c in enumerate(response["citations"], 1):
-        print(f"  [{i}] p.{c['page']} | score={c['score']} | via={c['retriever']}")
-    print()
-
-    print("[AI 답변]")
-    for line in response["answer"].strip().splitlines():
-        print(f"  {line}")
-    print()
-
-    print("[실제 정답]")
-    print(f"  {q_info['answer']}")
-    print()
-
-    print(f"[채점]  {grading['earned']} / {grading['max']} 점")
-    for fb in grading["feedback"]:
-        print(fb)
-    print(f"\n{LINE}")
-
-
-# =============================================
-# 메인 실행: 모든 클래스 조립
-# =============================================
-def main() -> None:
-    from langchain_ollama import ChatOllama
-
-    raw_docs = PDFIngestor(PDF_PATH).load_documents()
-    chunks   = ChunkService(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-    ).split(raw_docs)
-
-    embedder    = Embedder(mpath=EMBEDDING_MODEL)
-    vector_repo = embedder.get_or_build(chunks, save_path=FAISS_CACHE_PATH)
-
-    # ── 3. DB (없으면 None → Dense 전용) ─────────────────
-    metadata_repo = try_build_metadata_repo(DB_DSN)
-    if metadata_repo:
-        metadata_repo.initialize_schema()
-        metadata_repo.upsert_documents(chunks)
-
-    # ── 4. 검색기 ─────────────────────────────────────────
-    retriever = HybridRetriever(
-        vector_repo=vector_repo,
-        metadata_repo=metadata_repo,
-        dense_weight=0.7,
-        sparse_weight=0.3,
-    )
-
-    # ── 5. Reranker (없거나 실패하면 None) ────────────────
-    reranker = try_build_reranker(
-        model_name="cross-encoder/ms-marco-MiniLM-L-6-v2",
-        top_k=4,
-        enabled=True,
-    )
-
-    print(f"LLM 로딩: {LLM_MODEL}")
-    llm = ChatOllama(model=LLM_MODEL)
-
-
-    pipeline = RAGPipeline(
-        retriever=retriever,
-        llm=llm,
-        reranker=reranker,
-        max_context_chunks=4,
-    )
-
-    print("\n시험 문제 풀이 시작!\n")
-    total_max    = sum(q["points"] for q in EXAM_QUESTIONS)
-    total_earned = 0
-
-    for q_info in EXAM_QUESTIONS:
-        response = pipeline.answer(q_info["question"], question_type=q_info["type"])
-        grading  = grade(q_info, response["answer"])
-        print_result(q_info, response, grading)
-        total_earned += grading["earned"]
-
-    print(f"\n최종 점수: {total_earned} / {total_max} 점")
-
-
-if __name__ == "__main__":
-    main()
